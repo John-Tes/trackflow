@@ -1,0 +1,91 @@
+import { useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { Check, MapPin, Package, Radio, WifiOff } from "lucide-react";
+import { CODE_RE, label } from "./api";
+import { useTracking } from "./useTracking";
+
+const fmt = (d) => (d ? new Date(d).toLocaleString([], { dateStyle: "medium", timeStyle: "short" }) : "—");
+
+function Search({ initial = "" }) {
+  const nav = useNavigate();
+  const [v, setV] = useState(initial);
+  const [err, setErr] = useState("");
+  const submit = (e) => {
+    e.preventDefault();
+    const c = v.trim().toUpperCase();
+    if (!CODE_RE.test(c)) return setErr("Enter a valid tracking number, e.g. TRK-X7K92M4Q.");
+    setErr(""); nav(`/track/${c}`);
+  };
+  return (
+    <form onSubmit={submit} className="mx-auto w-full max-w-md space-y-3">
+      <label htmlFor="code" className="sr-only">Tracking number</label>
+      <input id="code" value={v} onChange={(e) => setV(e.target.value)} placeholder="TRK-X7K92M4Q" autoComplete="off"
+        aria-invalid={!!err} className="w-full rounded-xl border border-slate-300 bg-white px-4 py-4 text-center text-lg tracking-widest focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+      {err && <p role="alert" className="text-sm text-red-600">{err}</p>}
+      <button className="w-full rounded-xl bg-indigo-600 px-4 py-3 font-semibold text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">Track Package</button>
+    </form>
+  );
+}
+
+function Timeline({ events, status }) {
+  return (
+    <ol className="relative space-y-6 border-l-2 border-slate-200 pl-6">
+      {events.map((e, i) => {
+        const current = i === events.length - 1 && status !== "DELIVERED";
+        return (
+          <li key={i} className="relative">
+            <span className={`absolute -left-[34px] flex h-6 w-6 items-center justify-center rounded-full ${current ? "bg-indigo-600 ring-4 ring-indigo-100" : "bg-emerald-500"}`}>
+              {current ? <span className="h-2 w-2 animate-pulse rounded-full bg-white" /> : <Check size={14} className="text-white" />}
+            </span>
+            <p className={`font-medium ${current ? "text-indigo-700" : ""}`}>{e.description || label(e.status)}</p>
+            <p className="text-sm text-slate-500">{[e.location, fmt(e.created_at)].filter(Boolean).join(" · ")}</p>
+          </li>
+        );
+      })}
+      {status !== "DELIVERED" && status !== "CANCELLED" && (
+        <li className="relative text-slate-400">
+          <span className="absolute -left-[34px] h-6 w-6 rounded-full border-2 border-slate-300 bg-white" />Delivered
+        </li>
+      )}
+    </ol>
+  );
+}
+
+export default function TrackPage() {
+  const { code } = useParams();
+  const { data, isLoading, isError, error, live } = useTracking(code?.toUpperCase());
+  const notFound = isError && error?.response?.status === 404;
+  return (
+    <main className="mx-auto max-w-2xl px-4 py-10 sm:py-16">
+      <header className="mb-8 text-center">
+        <Package className="mx-auto mb-3 text-indigo-600" size={36} />
+        <h1 className="text-3xl font-bold">Track your package</h1>
+        <p className="mt-2 text-slate-600">Enter your tracking number to see the latest delivery updates in real time.</p>
+      </header>
+      <Search initial={code || ""} />
+      {code && (
+        <section className="mt-8" aria-live="polite">
+          {isLoading && <div className="h-64 animate-pulse rounded-2xl bg-slate-200" />}
+          {notFound && <p role="alert" className="rounded-xl bg-red-50 p-4 text-red-700">Tracking number not found.</p>}
+          {isError && !notFound && <p role="alert" className="rounded-xl bg-red-50 p-4 text-red-700">Unable to load tracking information. Please try again.</p>}
+          {data && (
+            <div className="space-y-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8">
+              <div className="flex items-center justify-between text-sm">
+                <span className="font-mono text-slate-500">{data.tracking_code}</span>
+                {live ? <span className="flex items-center gap-1 text-emerald-600"><Radio size={14} /> Live</span>
+                      : <span className="flex items-center gap-1 text-amber-600"><WifiOff size={14} /> Live tracking temporarily disconnected.</span>}
+              </div>
+              <h2 className="text-2xl font-bold text-indigo-700">{label(data.status)}</h2>
+              <dl className="grid gap-4 sm:grid-cols-2">
+                <div><dt className="text-sm text-slate-500">Current location</dt><dd className="flex items-center gap-1 font-medium"><MapPin size={16} />{data.current_location || "—"}</dd></div>
+                <div><dt className="text-sm text-slate-500">Estimated delivery</dt><dd className="font-medium">{data.status === "DELIVERED" ? `Delivered ${fmt(data.delivered_at)}` : fmt(data.estimated_delivery)}</dd></div>
+              </dl>
+              <h3 className="pt-2 text-sm font-semibold uppercase tracking-wide text-slate-500">Tracking timeline</h3>
+              <Timeline events={data.events} status={data.status} />
+            </div>
+          )}
+        </section>
+      )}
+    </main>
+  );
+}
