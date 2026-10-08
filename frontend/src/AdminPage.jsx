@@ -1,34 +1,20 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
-import { api, label, NEXT, wakeServer } from "./api";
+import { api, label, NEXT } from "./api";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 
 function Login({ onDone }) {
   const [f, setF] = useState({ username: "", password: "" });
   const [err, setErr] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [slow, setSlow] = useState(false);
+  const [show, setShow] = useState(false);
   const submit = async (e) => {
     e.preventDefault();
-    setErr("");
-    setSlow(false);
-    setBusy(true);
     try {
-      if (!(await wakeServer(() => setSlow(true)))) {
-        setErr("The server is taking too long to respond. Please try again.");
-        return;
-      }
       const r = await api.post("/auth/login/", f);
       sessionStorage.setItem("access", r.data.access);
       onDone();
-    } catch (ex) {
-      setErr(
-        ex.response
-          ? "Invalid credentials."
-          : "Unable to reach the server. Please try again.",
-      );
-    } finally {
-      setBusy(false);
+    } catch {
+      setErr("Invalid credentials.");
     }
   };
   return (
@@ -67,20 +53,9 @@ function Login({ onDone }) {
           {err}
         </p>
       )}
-      <button
-        disabled={busy}
-        className="flex w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 py-2 font-semibold text-white disabled:cursor-wait disabled:opacity-80"
-      >
-        {busy && (
-          <Loader2 size={18} className="animate-spin" aria-hidden="true" />
-        )}
-        {busy ? (slow ? "Waking up server…" : "Signing in…") : "Sign in"}
+      <button className="w-full rounded-lg bg-indigo-600 py-2 font-semibold text-white">
+        Sign in
       </button>
-      <p role="status" className="min-h-5 text-sm text-slate-500">
-        {busy && slow
-          ? "Our server was resting. This can take up to a minute."
-          : ""}
-      </p>
     </form>
   );
 }
