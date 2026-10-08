@@ -1,14 +1,24 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, label, NEXT } from "./api";
+import { Loader2 } from "lucide-react";
+import { api, label, NEXT, wakeServer } from "./api";
 
 function Login({ onDone }) {
   const [f, setF] = useState({ username: "", password: "" });
   const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [slow, setSlow] = useState(false);
   const submit = async (e) => {
     e.preventDefault();
-    try { const r = await api.post("/auth/login/", f); sessionStorage.setItem("access", r.data.access); onDone(); }
-    catch { setErr("Invalid credentials."); }
+    setErr(""); setSlow(false); setBusy(true);
+    try {
+      if (!(await wakeServer(() => setSlow(true)))) { setErr("The server is taking too long to respond. Please try again."); return; }
+      const r = await api.post("/auth/login/", f);
+      sessionStorage.setItem("access", r.data.access);
+      onDone();
+    } catch (ex) {
+      setErr(ex.response ? "Invalid credentials." : "Unable to reach the server. Please try again.");
+    } finally { setBusy(false); }
   };
   return (
     <form onSubmit={submit} className="mx-auto mt-24 w-full max-w-sm space-y-3 rounded-2xl border bg-white p-6 shadow-sm">
@@ -16,7 +26,9 @@ function Login({ onDone }) {
       <input aria-label="Username" placeholder="Username" className="w-full rounded-lg border p-2" onChange={(e) => setF({ ...f, username: e.target.value })} />
       <input aria-label="Password" type="password" placeholder="Password" className="w-full rounded-lg border p-2" onChange={(e) => setF({ ...f, password: e.target.value })} />
       {err && <p role="alert" className="text-sm text-red-600">{err}</p>}
-      <button className="w-full rounded-lg bg-indigo-600 py-2 font-semibold text-white">Sign in</button>
+      <button disabled={busy} className="flex w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 py-2 font-semibold text-white disabled:cursor-wait disabled:opacity-80">
+        {busy && <Loader2 size={18} className="animate-spin" aria-hidden="true" />}{busy ? (slow ? "Waking up server…" : "Signing in…") : "Sign in"}</button>
+      <p role="status" className="min-h-5 text-sm text-slate-500">{busy && slow ? "Our server was resting. This can take up to a minute." : ""}</p>
     </form>
   );
 }

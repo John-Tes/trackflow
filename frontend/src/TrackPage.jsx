@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Check, MapPin, Package, Radio, WifiOff } from "lucide-react";
-import { CODE_RE, label } from "./api";
+import { Check, Loader2, MapPin, Package, Radio, WifiOff } from "lucide-react";
+import { CODE_RE, label, wakeServer } from "./api";
 import { useTracking } from "./useTracking";
 
 const fmt = (d) => (d ? new Date(d).toLocaleString([], { dateStyle: "medium", timeStyle: "short" }) : "—");
@@ -10,19 +10,29 @@ export function Search({ initial = "" }) {
   const nav = useNavigate();
   const [v, setV] = useState(initial);
   const [err, setErr] = useState("");
-  const submit = (e) => {
+  const [busy, setBusy] = useState(false);
+  const [slow, setSlow] = useState(false);
+  const submit = async (e) => {
     e.preventDefault();
     const c = v.trim().toUpperCase();
     if (!CODE_RE.test(c)) return setErr("Enter a valid tracking number, e.g. TRK-X7K92M4Q.");
-    setErr(""); nav(`/track/${c}`);
+    setErr(""); setSlow(false); setBusy(true);
+    const ok = await wakeServer(() => setSlow(true));
+    setBusy(false);
+    if (!ok) return setErr("The server is taking too long to respond. Please try again.");
+    nav(`/track/${c}`);
   };
   return (
-    <form onSubmit={submit} className="mx-auto w-full max-w-md space-y-3">
+    <form onSubmit={submit} className="mx-auto w-full max-w-md space-y-3" aria-busy={busy}>
       <label htmlFor="code" className="sr-only">Tracking number</label>
-      <input id="code" value={v} onChange={(e) => setV(e.target.value)} placeholder="TRK-X7K92M4Q" autoComplete="off"
-        aria-invalid={!!err} className="w-full rounded-xl border border-slate-300 bg-white px-4 py-4 text-center text-lg tracking-widest focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+      <input id="code" value={v} onChange={(e) => setV(e.target.value)} placeholder="TRK-X7K92M4Q" autoComplete="off" disabled={busy}
+        aria-invalid={!!err} className="w-full rounded-xl border border-slate-300 bg-white px-4 py-4 text-center text-lg tracking-widest focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-60" />
       {err && <p role="alert" className="text-sm text-red-600">{err}</p>}
-      <button className="w-full rounded-xl bg-indigo-600 px-4 py-3 font-semibold text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">Track Package</button>
+      <button disabled={busy} className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 font-semibold text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:cursor-wait disabled:opacity-80">
+        {busy && <Loader2 size={18} className="animate-spin" aria-hidden="true" />}
+        {busy ? (slow ? "Waking up server…" : "Tracking…") : "Track Package"}
+      </button>
+      <p role="status" className="min-h-5 text-sm text-slate-500">{busy && slow ? "Our server was resting. This can take up to a minute on the first request." : ""}</p>
     </form>
   );
 }
