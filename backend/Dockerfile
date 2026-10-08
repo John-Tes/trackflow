@@ -15,4 +15,5 @@ RUN python manage.py collectstatic --no-input
 
 EXPOSE 10000
 
-CMD ["gunicorn", "config.asgi:application", "-k", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:10000"]
+
+CMD ["sh", "-c", "gunicorn config.asgi:application -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:${PORT:-10000}"]
