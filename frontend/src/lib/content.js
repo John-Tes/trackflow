@@ -1,0 +1,43 @@
+// All marketing content lives here so it is easy to change. Contact details come from env vars.
+export const SITE = {
+  name: "TrackFlowUK",
+  email: import.meta.env.VITE_CONTACT_EMAIL || "",
+  phone: import.meta.env.VITE_CONTACT_PHONE || "",
+  hours: import.meta.env.VITE_BUSINESS_HOURS || "",
+  highlights: [["Real-time", "Parcel tracking"], ["Door-to-door", "Collection & delivery"], ["24/7", "Tracking access"], ["UK", "Coverage focus"]],
+};
+export const SERVICES = [
+  { slug: "same-day-delivery", icon: "Zap", title: "Same-Day Delivery", desc: "Fast local delivery for urgent parcels.",
+    benefits: ["Collected and delivered within the same day", "Live tracking throughout", "Ideal for time-critical items"],
+    uses: ["Urgent documents", "Forgotten items", "Local business orders"], expect: "Delivery on the day of collection, subject to booking cut-off times." },
+  { slug: "next-day-delivery", icon: "Clock", title: "Next-Day Delivery", desc: "Reliable next-day parcel delivery across the UK.",
+    benefits: ["Next working day delivery", "Tracking from collection to door", "Predictable, simple pricing"],
+    uses: ["Online orders", "Gifts and returns", "Business shipments"], expect: "Delivery on the next working day for eligible UK addresses." },
+  { slug: "standard-delivery", icon: "Package", title: "Standard Delivery", desc: "Affordable delivery for everyday shipments.",
+    benefits: ["Cost-effective for non-urgent parcels", "Full tracking visibility", "Suitable for most parcel sizes"],
+    uses: ["Everyday parcels", "Non-urgent shipments", "Bulk personal sending"], expect: "A few working days depending on distance." },
+  { slug: "business-delivery", icon: "Building2", title: "Business Delivery", desc: "Courier solutions for businesses and online retailers.",
+    benefits: ["Reliable handling of regular shipments", "Tracking links for your customers", "Support for repeat deliveries"],
+    uses: ["Online retailers", "Offices and trade", "Regular dispatches"], expect: "Arranged around your volumes. Contact us to discuss." },
+  { slug: "scheduled-delivery", icon: "CalendarClock", title: "Scheduled Delivery", desc: "Choose a convenient delivery window.",
+    benefits: ["Pick a delivery date that suits you", "Fewer missed deliveries", "Tracking updates on the way"],
+    uses: ["Gifts for a set date", "Home deliveries", "Planned business drops"], expect: "Delivery within the window agreed at booking." },
+  { slug: "parcel-collection", icon: "PackageCheck", title: "Parcel Collection", desc: "Reliable collection from homes, offices and businesses.",
+    benefits: ["Collection from the address you choose", "Choose a convenient collection date", "Tracking starts at collection"],
+    uses: ["Home collections", "Office pickups", "Returns"], expect: "Collection on your preferred date, subject to availability." },
+  { slug: "real-time-tracking", icon: "MapPin", title: "Real-Time Tracking", desc: "Track your shipment from collection to delivery.",
+    benefits: ["Live status and location updates", "Complete tracking history", "No account needed to track"],
+    uses: ["Senders keeping watch", "Recipients awaiting parcels", "Customer service teams"], expect: "Updates appear on your tracking page as they happen." },
+];
+export const FAQS = [
+  ["How do I track my parcel?", "Enter your tracking number on the Track Parcel page. Your parcel's status, location and history appear straight away."],
+  ["Where can I find my tracking number?", "It is in your booking confirmation or from the sender, in the format TRK-XXXXXXXX."],
+  ["How long does delivery take?", "It depends on the service you choose: same-day, next-day or standard. See the Services page for details."],
+  ["Can I change my delivery address?", "Contact us as soon as possible with your tracking number. Changes depend on how far the parcel has progressed."],
+  ["What happens if I miss my delivery?", "Check your tracking page for the latest status, then contact us to arrange another attempt."],
+  ["Can I track my parcel in real time?", "Yes. The tracking page updates automatically when the status or location changes, with no refresh needed."],
+  ["Do you offer same-day delivery?", "Same-day delivery is one of our services. Request a quote to check availability for your route."],
+  ["How do I request a quote?", "Use the Get a Quote page. Fill in your parcel and route details to see an estimate."],
+  ["What should I do if my parcel is delayed?", "Check your tracking page first. If the status shows Delayed or you need help, contact us with your tracking number."],
+  ["Can businesses use TrackFlowUK?", "Yes. Our Business Delivery service is designed for retailers and companies. Get in touch to discuss your needs."],
+];

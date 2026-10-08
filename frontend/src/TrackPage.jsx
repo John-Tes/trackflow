@@ -6,7 +6,7 @@ import { useTracking } from "./useTracking";
 
 const fmt = (d) => (d ? new Date(d).toLocaleString([], { dateStyle: "medium", timeStyle: "short" }) : "—");
 
-function Search({ initial = "" }) {
+export function Search({ initial = "" }) {
   const nav = useNavigate();
   const [v, setV] = useState(initial);
   const [err, setErr] = useState("");
