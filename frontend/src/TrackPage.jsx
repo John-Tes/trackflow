@@ -88,7 +88,8 @@ export default function TrackPage() {
               <h2 className="text-2xl font-bold text-indigo-700">{label(data.status)}</h2>
               <dl className="grid gap-4 sm:grid-cols-2">
                 <div><dt className="text-sm text-slate-500">Current location</dt><dd className="flex items-center gap-1 font-medium"><MapPin size={16} />{data.current_location || "—"}</dd></div>
-                <div><dt className="text-sm text-slate-500">Estimated delivery</dt><dd className="font-medium">{data.status === "DELIVERED" ? `Delivered ${fmt(data.delivered_at)}` : fmt(data.estimated_delivery)}</dd></div>
+                <div><dt className="text-sm text-slate-500">Pickup date</dt><dd className="font-medium">{fmt(data.pickup_date)}</dd></div>
+                <div><dt className="text-sm text-slate-500">Delivery date</dt><dd className="font-medium">{data.status === "DELIVERED" ? `Delivered ${fmt(data.delivered_at)}` : fmt(data.estimated_delivery)}</dd></div>
               </dl>
               <h3 className="pt-2 text-sm font-semibold uppercase tracking-wide text-slate-500">Tracking timeline</h3>
               <Timeline events={data.events} status={data.status} />

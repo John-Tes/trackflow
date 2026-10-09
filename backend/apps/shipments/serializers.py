@@ -12,7 +12,7 @@ class PublicShipmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Shipment
         fields = ["tracking_code", "status", "current_location", "latitude", "longitude",
-                  "estimated_delivery", "delivered_at", "package_type", "events"]
+                  "estimated_delivery", "pickup_date", "delivered_at", "package_type", "events"]
 
 class ShipmentSerializer(serializers.ModelSerializer):
     staff_name = serializers.CharField(source="assigned_staff.username", read_only=True, default=None)
