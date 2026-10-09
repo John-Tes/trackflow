@@ -54,7 +54,7 @@ class ShipmentViewSet(viewsets.ModelViewSet):
                                      location=s.pickup_address[:120], created_by=self.request.user)
         services.log(self.request.user, "shipment.create", s)
     def perform_update(self, serializer):
-        if _role(self.request.user) != "ADMIN" and set(serializer.validated_data) - {"estimated_delivery"}:
+        if _role(self.request.user) != "ADMIN" and set(serializer.validated_data) - {"estimated_delivery", "pickup_date"}:
             raise PermissionDenied("You do not have permission to perform this action.")
         s = serializer.save()
         services.log(self.request.user, "shipment.edit", s, {"fields": list(serializer.validated_data)})

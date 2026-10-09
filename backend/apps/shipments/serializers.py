@@ -20,7 +20,7 @@ class ShipmentSerializer(serializers.ModelSerializer):
         model = Shipment
         fields = ["id", "tracking_code", "customer_name", "customer_phone", "customer_email",
                   "pickup_address", "delivery_address", "package_description", "package_type", "weight_kg",
-                  "status", "current_location", "latitude", "longitude", "estimated_delivery",
+                  "status", "current_location", "latitude", "longitude", "estimated_delivery", "pickup_date",
                   "assigned_staff", "staff_name", "created_at", "updated_at", "delivered_at"]
         # Mass-assignment protection: state fields change only through services.apply_event
         read_only_fields = ["id", "tracking_code", "status", "current_location", "latitude",
