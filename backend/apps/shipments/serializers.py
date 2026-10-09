@@ -8,11 +8,10 @@ class PublicEventSerializer(serializers.ModelSerializer):
 
 class PublicShipmentSerializer(serializers.ModelSerializer):
     """Only what a recipient needs. No names, phones, emails, staff or internal ids."""
-    events = PublicEventSerializer(many=True, read_only=True)
     class Meta:
         model = Shipment
         fields = ["tracking_code", "status", "current_location", "latitude", "longitude",
-                  "estimated_delivery", "pickup_date", "delivered_at", "package_type", "events"]
+                  "estimated_delivery", "pickup_date", "created_at", "package_type"]
 
 class AdminEventSerializer(serializers.ModelSerializer):
     class Meta:
@@ -24,6 +23,7 @@ class EventDateSerializer(serializers.Serializer):
 
 class ShipmentSerializer(serializers.ModelSerializer):
     events = AdminEventSerializer(many=True, read_only=True)
+    created_at = serializers.DateTimeField(required=False)  # admin can set the created date
     staff_name = serializers.CharField(source="assigned_staff.username", read_only=True, default=None)
     class Meta:
         model = Shipment
@@ -33,7 +33,7 @@ class ShipmentSerializer(serializers.ModelSerializer):
                   "assigned_staff", "staff_name", "created_at", "updated_at", "delivered_at", "events"]
         # Mass-assignment protection: state fields change only through services.apply_event
         read_only_fields = ["id", "tracking_code", "status", "current_location", "latitude",
-                            "longitude", "created_at", "updated_at", "delivered_at"]
+                            "longitude", "updated_at", "delivered_at"]
 
 class EventInputSerializer(serializers.Serializer):
     status = serializers.ChoiceField(choices=Status.choices, required=False)

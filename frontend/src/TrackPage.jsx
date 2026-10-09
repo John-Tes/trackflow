@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Check, Loader2, MapPin, Package, Radio, WifiOff } from "lucide-react";
+import { Loader2, MapPin, Package, Radio, WifiOff } from "lucide-react";
 import { CODE_RE, label, wakeServer } from "./api";
 import { useTracking } from "./useTracking";
 
@@ -37,27 +37,15 @@ export function Search({ initial = "" }) {
   );
 }
 
-function Timeline({ events, status }) {
+const STEPS = ["CREATED", "PICKED_UP", "PROCESSING", "IN_TRANSIT", "ARRIVED_AT_DESTINATION", "OUT_FOR_DELIVERY", "DELIVERED"];
+function Progress({ status }) {
+  const i = STEPS.indexOf(status);
+  if (i < 0) return null;
+  const pct = Math.round(((i + 1) / STEPS.length) * 100);
   return (
-    <ol className="relative space-y-6 border-l-2 border-slate-200 pl-6">
-      {events.map((e, i) => {
-        const current = i === events.length - 1 && status !== "DELIVERED";
-        return (
-          <li key={i} className="relative">
-            <span className={`absolute -left-[34px] flex h-6 w-6 items-center justify-center rounded-full ${current ? "bg-indigo-600 ring-4 ring-indigo-100" : "bg-emerald-500"}`}>
-              {current ? <span className="h-2 w-2 animate-pulse rounded-full bg-white" /> : <Check size={14} className="text-white" />}
-            </span>
-            <p className={`font-medium ${current ? "text-indigo-700" : ""}`}>{e.description || label(e.status)}</p>
-            <p className="text-sm text-slate-500">{[e.location, fmt(e.created_at)].filter(Boolean).join(" · ")}</p>
-          </li>
-        );
-      })}
-      {status !== "DELIVERED" && status !== "CANCELLED" && (
-        <li className="relative text-slate-400">
-          <span className="absolute -left-[34px] h-6 w-6 rounded-full border-2 border-slate-300 bg-white" />Delivered
-        </li>
-      )}
-    </ol>
+    <div role="progressbar" aria-label="Delivery progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} className="h-2 w-full overflow-hidden rounded-full bg-slate-200">
+      <div className="h-full rounded-full bg-indigo-600 transition-all duration-500" style={{ width: `${pct}%` }} />
+    </div>
   );
 }
 
@@ -86,13 +74,16 @@ export default function TrackPage() {
                       : <span className="flex items-center gap-1 text-amber-600"><WifiOff size={14} /> Live tracking temporarily disconnected.</span>}
               </div>
               <h2 className="text-2xl font-bold text-indigo-700">{label(data.status)}</h2>
-              <dl className="grid gap-4 sm:grid-cols-2">
-                <div><dt className="text-sm text-slate-500">Current location</dt><dd className="flex items-center gap-1 font-medium"><MapPin size={16} />{data.current_location || "—"}</dd></div>
-                <div><dt className="text-sm text-slate-500">Pickup date</dt><dd className="font-medium">{fmt(data.pickup_date)}</dd></div>
-                <div><dt className="text-sm text-slate-500">Delivery date</dt><dd className="font-medium">{data.status === "DELIVERED" ? `Delivered ${fmt(data.delivered_at)}` : fmt(data.estimated_delivery)}</dd></div>
+              <Progress status={data.status} />
+              <div>
+                <p className="text-sm text-slate-500">Current location</p>
+                <p className="flex items-center gap-1 font-medium"><MapPin size={16} />{data.current_location || "—"}</p>
+              </div>
+              <dl className="grid gap-3 sm:grid-cols-3">
+                {[["Created", data.created_at], ["Pickup date", data.pickup_date], ["Delivery date", data.estimated_delivery]].map(([k, v]) => (
+                  <div key={k} className="rounded-xl bg-slate-50 p-4"><dt className="text-sm text-slate-500">{k}</dt><dd className="font-medium">{fmt(v)}</dd></div>
+                ))}
               </dl>
-              <h3 className="pt-2 text-sm font-semibold uppercase tracking-wide text-slate-500">Tracking timeline</h3>
-              <Timeline events={data.events} status={data.status} />
             </div>
           )}
         </section>

@@ -111,30 +111,12 @@ function CreateShipment({ onClose }) {
   );
 }
 
-function EventDate({ shipmentId, ev }) {
-  const qc = useQueryClient();
-  const [v, setV] = useState(toInput(ev.created_at));
-  const [ok, setOk] = useState(false);
-  const m = useMutation({
-    mutationFn: (iso) => api.patch(`/shipments/${shipmentId}/events/${ev.id}/`, { created_at: iso }),
-    onSuccess: () => { setOk(true); setTimeout(() => setOk(false), 3000); qc.invalidateQueries({ queryKey: ["shipments"] }); },
-  });
-  return (
-    <li className="flex flex-col gap-2 sm:flex-row sm:items-center">
-      <span className="flex-1 text-sm"><b>{label(ev.status)}</b>{ev.description ? ` · ${ev.description}` : ""}</span>
-      <input type="datetime-local" aria-label={`Date for ${label(ev.status)}`} value={v} onChange={(x) => setV(x.target.value)} className="rounded-lg border p-2" />
-      <button disabled={!v || m.isPending} onClick={() => m.mutate(toIso(v))} className="rounded-lg border px-3 py-2 text-sm font-medium disabled:opacity-50">
-        {m.isPending ? "Saving…" : ok ? "Saved ✓" : "Save"}</button>
-      {m.isError && <span role="alert" className="text-sm text-red-600">Failed</span>}
-    </li>
-  );
-}
-
 function Row({ s }) {
   const qc = useQueryClient();
   const [next, setNext] = useState("");
   const [loc, setLoc] = useState("");
   const [saved, setSaved] = useState(false);
+  const [cd, setCd] = useState(toInput(s.created_at));
   const [pd, setPd] = useState(toInput(s.pickup_date));
   const [dd, setDd] = useState(toInput(s.estimated_delivery));
   const [dSaved, setDSaved] = useState(false);
@@ -170,19 +152,17 @@ function Row({ s }) {
           className="rounded-lg bg-indigo-600 px-4 py-2 font-medium text-white disabled:opacity-50">Update</button>
       </div>
       <div className="flex flex-col gap-2 border-t pt-3 sm:flex-row sm:items-end">
+        <label className="flex-1 text-sm text-slate-600">Created date
+          <input type="datetime-local" value={cd} onChange={(e) => setCd(e.target.value)} className="mt-1 w-full rounded-lg border p-2" /></label>
         <label className="flex-1 text-sm text-slate-600">Pickup date
           <input type="datetime-local" value={pd} onChange={(e) => setPd(e.target.value)} className="mt-1 w-full rounded-lg border p-2" /></label>
         <label className="flex-1 text-sm text-slate-600">Delivery date
           <input type="datetime-local" value={dd} onChange={(e) => setDd(e.target.value)} className="mt-1 w-full rounded-lg border p-2" /></label>
-        <button disabled={dm.isPending} onClick={() => dm.mutate({ pickup_date: toIso(pd), estimated_delivery: toIso(dd) })}
+        <button disabled={dm.isPending} onClick={() => dm.mutate({ ...(cd && { created_at: toIso(cd) }), pickup_date: toIso(pd), estimated_delivery: toIso(dd) })}
           className="rounded-lg bg-indigo-600 px-4 py-2 font-medium text-white disabled:opacity-50">{dm.isPending ? "Saving…" : "Save dates"}</button>
       </div>
       {dSaved && <p className="text-sm text-emerald-600">Dates saved and sent to live viewers.</p>}
       {dm.isError && <p role="alert" className="text-sm text-red-600">Unable to save dates. Please check the values and try again.</p>}
-      <details className="border-t pt-3">
-        <summary className="cursor-pointer text-sm font-medium text-slate-700">Edit timeline dates ({(s.events || []).length})</summary>
-        <ul className="mt-3 space-y-3">{(s.events || []).map((ev) => <EventDate key={ev.id} shipmentId={s.id} ev={ev} />)}</ul>
-      </details>
       <div className="flex flex-wrap items-center justify-end gap-2 border-t pt-3">
         {confirmDel ? (
           <>
