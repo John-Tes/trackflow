@@ -98,7 +98,6 @@ function CreateShipment({ onClose }) {
         {input("delivery_address", "Delivery address", "text", true)}
         {input("package_description", "Package description")}
         {input("weight_kg", "Weight (kg)", "number")}
-        {input("pickup_date", "Pickup date", "datetime-local")}
         {input("estimated_delivery", "Delivery date", "datetime-local")}
       </div>
       {errs && !Object.keys(errs).some((k) => k in f) && <p role="alert" className="text-sm text-red-600">{JSON.stringify(errs)}</p>}
@@ -111,13 +110,37 @@ function CreateShipment({ onClose }) {
   );
 }
 
+function EventDate({ shipmentId, ev }) {
+  const qc = useQueryClient();
+  const [f, setF] = useState({ date: toInput(ev.created_at), location: ev.location || "", description: ev.description || "" });
+  const [ok, setOk] = useState(false);
+  const m = useMutation({
+    mutationFn: () => api.patch(`/shipments/${shipmentId}/events/${ev.id}/`, { created_at: toIso(f.date), location: f.location, description: f.description }),
+    onSuccess: () => { setOk(true); setTimeout(() => setOk(false), 3000); qc.invalidateQueries({ queryKey: ["shipments"] }); },
+  });
+  const set = (k) => (x) => setF({ ...f, [k]: x.target.value });
+  return (
+    <li className="space-y-2 rounded-lg border p-3">
+      <p className="text-sm font-semibold">{label(ev.status)}</p>
+      <div className="grid gap-2 sm:grid-cols-3">
+        <input type="datetime-local" aria-label={`Date for ${label(ev.status)}`} value={f.date} onChange={set("date")} className="rounded-lg border p-2" />
+        <input aria-label={`Location for ${label(ev.status)}`} placeholder="Location" value={f.location} onChange={set("location")} className="rounded-lg border p-2" />
+        <input aria-label={`Note for ${label(ev.status)}`} placeholder="Note shown to customer" value={f.description} onChange={set("description")} className="rounded-lg border p-2" />
+      </div>
+      <div className="flex items-center gap-3">
+        <button disabled={!f.date || m.isPending} onClick={() => m.mutate()} className="rounded-lg border px-3 py-2 text-sm font-medium disabled:opacity-50">{m.isPending ? "Saving…" : "Save step"}</button>
+        {ok && <span className="text-sm text-emerald-600">Saved and sent to live viewers.</span>}
+        {m.isError && <span role="alert" className="text-sm text-red-600">Unable to save.</span>}
+      </div>
+    </li>
+  );
+}
+
 function Row({ s }) {
   const qc = useQueryClient();
   const [next, setNext] = useState("");
   const [loc, setLoc] = useState("");
   const [saved, setSaved] = useState(false);
-  const [cd, setCd] = useState(toInput(s.created_at));
-  const [pd, setPd] = useState(toInput(s.pickup_date));
   const [dd, setDd] = useState(toInput(s.estimated_delivery));
   const [dSaved, setDSaved] = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);
@@ -152,17 +175,17 @@ function Row({ s }) {
           className="rounded-lg bg-indigo-600 px-4 py-2 font-medium text-white disabled:opacity-50">Update</button>
       </div>
       <div className="flex flex-col gap-2 border-t pt-3 sm:flex-row sm:items-end">
-        <label className="flex-1 text-sm text-slate-600">Created date
-          <input type="datetime-local" value={cd} onChange={(e) => setCd(e.target.value)} className="mt-1 w-full rounded-lg border p-2" /></label>
-        <label className="flex-1 text-sm text-slate-600">Pickup date
-          <input type="datetime-local" value={pd} onChange={(e) => setPd(e.target.value)} className="mt-1 w-full rounded-lg border p-2" /></label>
         <label className="flex-1 text-sm text-slate-600">Delivery date
           <input type="datetime-local" value={dd} onChange={(e) => setDd(e.target.value)} className="mt-1 w-full rounded-lg border p-2" /></label>
-        <button disabled={dm.isPending} onClick={() => dm.mutate({ ...(cd && { created_at: toIso(cd) }), pickup_date: toIso(pd), estimated_delivery: toIso(dd) })}
-          className="rounded-lg bg-indigo-600 px-4 py-2 font-medium text-white disabled:opacity-50">{dm.isPending ? "Saving…" : "Save dates"}</button>
+        <button disabled={dm.isPending} onClick={() => dm.mutate({ estimated_delivery: toIso(dd) })}
+          className="rounded-lg bg-indigo-600 px-4 py-2 font-medium text-white disabled:opacity-50">{dm.isPending ? "Saving…" : "Save delivery date"}</button>
       </div>
-      {dSaved && <p className="text-sm text-emerald-600">Dates saved and sent to live viewers.</p>}
+      {dSaved && <p className="text-sm text-emerald-600">Delivery date saved and sent to live viewers.</p>}
       {dm.isError && <p role="alert" className="text-sm text-red-600">Unable to save dates. Please check the values and try again.</p>}
+      <details className="border-t pt-3">
+        <summary className="cursor-pointer text-sm font-medium text-slate-700">Edit timeline: dates, locations and notes ({(s.events || []).length})</summary>
+        <ul className="mt-3 space-y-3">{(s.events || []).map((ev) => <EventDate key={ev.id} shipmentId={s.id} ev={ev} />)}</ul>
+      </details>
       <div className="flex flex-wrap items-center justify-end gap-2 border-t pt-3">
         {confirmDel ? (
           <>

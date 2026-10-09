@@ -8,10 +8,11 @@ class PublicEventSerializer(serializers.ModelSerializer):
 
 class PublicShipmentSerializer(serializers.ModelSerializer):
     """Only what a recipient needs. No names, phones, emails, staff or internal ids."""
+    events = PublicEventSerializer(many=True, read_only=True)
     class Meta:
         model = Shipment
         fields = ["tracking_code", "status", "current_location", "latitude", "longitude",
-                  "estimated_delivery", "pickup_date", "created_at", "package_type"]
+                  "estimated_delivery", "delivered_at", "package_type", "events"]
 
 class AdminEventSerializer(serializers.ModelSerializer):
     class Meta:
@@ -19,7 +20,14 @@ class AdminEventSerializer(serializers.ModelSerializer):
         fields = ["id", "status", "location", "description", "created_at"]
 
 class EventDateSerializer(serializers.Serializer):
-    created_at = serializers.DateTimeField()
+    """What the admin can edit on a timeline step: its date, location and note."""
+    created_at = serializers.DateTimeField(required=False)
+    location = serializers.CharField(max_length=120, required=False, allow_blank=True)
+    description = serializers.CharField(max_length=255, required=False, allow_blank=True)
+    def validate(self, a):
+        if not a:
+            raise serializers.ValidationError("Provide at least one field to update.")
+        return a
 
 class ShipmentSerializer(serializers.ModelSerializer):
     events = AdminEventSerializer(many=True, read_only=True)

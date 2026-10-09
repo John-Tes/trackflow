@@ -80,24 +80,29 @@ class ShipmentViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["patch"], url_path=r"events/(?P<event_id>\d+)")
     def event_date(self, request, pk=None, event_id=None):
-        """Admin only: change the date/time of one timeline step (created, picked up, in transit, delivered...)."""
+        """Admin only: edit what customers see for one timeline step (date, location, note)."""
         s = self.get_object()
         ev = get_object_or_404(s.events.all(), pk=event_id)
         ser = EventDateSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
-        new, old = ser.validated_data["created_at"], ev.created_at
-        TrackingEvent.objects.filter(pk=ev.pk).update(created_at=new)  # created_at is auto_now_add; update() bypasses it
+        data = ser.validated_data
+        TrackingEvent.objects.filter(pk=ev.pk).update(**data)  # update() bypasses auto_now_add on created_at
         changes = {}
-        if ev.status == Status.DELIVERED:
-            changes["delivered_at"] = new
-        if ev.status == Status.CREATED:
-            changes["created_at"] = new
+        if "created_at" in data:
+            if ev.status == Status.DELIVERED:
+                changes["delivered_at"] = data["created_at"]
+            if ev.status == Status.CREATED:
+                changes["created_at"] = data["created_at"]
+        latest = s.events.order_by("created_at", "id").last()
+        if "location" in data and latest and latest.pk == ev.pk:
+            changes["current_location"] = data["location"]  # keep "current location" in sync with the latest step
         if changes:
             Shipment.objects.filter(pk=s.pk).update(**changes)
         s = Shipment.objects.select_related("assigned_staff").prefetch_related("events").get(pk=s.pk)
-        services.log(request.user, "shipment.event_date", s, {"event": ev.pk, "status": ev.status, "from": old.isoformat(), "to": new.isoformat()})
+        services.log(request.user, "shipment.event_edit", s, {"event": ev.pk, "status": ev.status, "changed": {k: str(v) for k, v in data.items()}})
         transaction.on_commit(lambda: services.broadcast(s))  # customers' pages update live
         return Response(ShipmentSerializer(s).data)
+
 
 class OverviewView(APIView):
     permission_classes = [IsAdminRole]
