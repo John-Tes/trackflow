@@ -4,6 +4,7 @@ from django.db import transaction
 from django.db.models import Count, Q
 from django.db.models.functions import TruncDate
 from django.utils import timezone
+from django.shortcuts import get_object_or_404
 from rest_framework import status as http, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
@@ -13,7 +14,7 @@ from rest_framework.views import APIView
 from apps.accounts.permissions import IsAdminRole, IsStaffOrAdmin, _role
 from . import services
 from .models import Shipment, Status, TrackingEvent
-from .serializers import (EventInputSerializer, LocationSerializer, PublicShipmentSerializer,
+from .serializers import (EventDateSerializer, EventInputSerializer, LocationSerializer, PublicShipmentSerializer,
                           ShipmentSerializer)
 
 CODE_RE = re.compile(r"^TRK-[A-Z0-9]{8}$")
@@ -34,9 +35,9 @@ class TrackView(APIView):
 class ShipmentViewSet(viewsets.ModelViewSet):
     serializer_class = ShipmentSerializer
     def get_permissions(self):
-        return [IsAdminRole()] if self.action in ("create", "destroy") else [IsStaffOrAdmin()]
+        return [IsAdminRole()] if self.action in ("create", "destroy", "event_date") else [IsStaffOrAdmin()]
     def get_queryset(self):
-        qs = Shipment.objects.select_related("assigned_staff")
+        qs = Shipment.objects.select_related("assigned_staff").prefetch_related("events")
         if _role(self.request.user) != "ADMIN":
             qs = qs.filter(assigned_staff=self.request.user)
         p = self.request.query_params
@@ -75,6 +76,27 @@ class ShipmentViewSet(viewsets.ModelViewSet):
         ser = LocationSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
         s = services.apply_event(s, request.user, description="Location updated", **ser.validated_data)
+        return Response(ShipmentSerializer(s).data)
+
+    @action(detail=True, methods=["patch"], url_path=r"events/(?P<event_id>\d+)")
+    def event_date(self, request, pk=None, event_id=None):
+        """Admin only: change the date/time of one timeline step (created, picked up, in transit, delivered...)."""
+        s = self.get_object()
+        ev = get_object_or_404(s.events.all(), pk=event_id)
+        ser = EventDateSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        new, old = ser.validated_data["created_at"], ev.created_at
+        TrackingEvent.objects.filter(pk=ev.pk).update(created_at=new)  # created_at is auto_now_add; update() bypasses it
+        changes = {}
+        if ev.status == Status.DELIVERED:
+            changes["delivered_at"] = new
+        if ev.status == Status.CREATED:
+            changes["created_at"] = new
+        if changes:
+            Shipment.objects.filter(pk=s.pk).update(**changes)
+        s = Shipment.objects.select_related("assigned_staff").prefetch_related("events").get(pk=s.pk)
+        services.log(request.user, "shipment.event_date", s, {"event": ev.pk, "status": ev.status, "from": old.isoformat(), "to": new.isoformat()})
+        transaction.on_commit(lambda: services.broadcast(s))  # customers' pages update live
         return Response(ShipmentSerializer(s).data)
 
 class OverviewView(APIView):

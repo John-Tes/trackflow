@@ -111,6 +111,25 @@ function CreateShipment({ onClose }) {
   );
 }
 
+function EventDate({ shipmentId, ev }) {
+  const qc = useQueryClient();
+  const [v, setV] = useState(toInput(ev.created_at));
+  const [ok, setOk] = useState(false);
+  const m = useMutation({
+    mutationFn: (iso) => api.patch(`/shipments/${shipmentId}/events/${ev.id}/`, { created_at: iso }),
+    onSuccess: () => { setOk(true); setTimeout(() => setOk(false), 3000); qc.invalidateQueries({ queryKey: ["shipments"] }); },
+  });
+  return (
+    <li className="flex flex-col gap-2 sm:flex-row sm:items-center">
+      <span className="flex-1 text-sm"><b>{label(ev.status)}</b>{ev.description ? ` · ${ev.description}` : ""}</span>
+      <input type="datetime-local" aria-label={`Date for ${label(ev.status)}`} value={v} onChange={(x) => setV(x.target.value)} className="rounded-lg border p-2" />
+      <button disabled={!v || m.isPending} onClick={() => m.mutate(toIso(v))} className="rounded-lg border px-3 py-2 text-sm font-medium disabled:opacity-50">
+        {m.isPending ? "Saving…" : ok ? "Saved ✓" : "Save"}</button>
+      {m.isError && <span role="alert" className="text-sm text-red-600">Failed</span>}
+    </li>
+  );
+}
+
 function Row({ s }) {
   const qc = useQueryClient();
   const [next, setNext] = useState("");
@@ -119,6 +138,11 @@ function Row({ s }) {
   const [pd, setPd] = useState(toInput(s.pickup_date));
   const [dd, setDd] = useState(toInput(s.estimated_delivery));
   const [dSaved, setDSaved] = useState(false);
+  const [confirmDel, setConfirmDel] = useState(false);
+  const del = useMutation({
+    mutationFn: () => api.delete(`/shipments/${s.id}/`),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["shipments"] }); qc.invalidateQueries({ queryKey: ["overview"] }); },
+  });
   const dm = useMutation({
     mutationFn: (b) => api.patch(`/shipments/${s.id}/`, b),
     onSuccess: () => { setDSaved(true); setTimeout(() => setDSaved(false), 3000); qc.invalidateQueries({ queryKey: ["shipments"] }); },
@@ -155,6 +179,20 @@ function Row({ s }) {
       </div>
       {dSaved && <p className="text-sm text-emerald-600">Dates saved and sent to live viewers.</p>}
       {dm.isError && <p role="alert" className="text-sm text-red-600">Unable to save dates. Please check the values and try again.</p>}
+      <details className="border-t pt-3">
+        <summary className="cursor-pointer text-sm font-medium text-slate-700">Edit timeline dates ({(s.events || []).length})</summary>
+        <ul className="mt-3 space-y-3">{(s.events || []).map((ev) => <EventDate key={ev.id} shipmentId={s.id} ev={ev} />)}</ul>
+      </details>
+      <div className="flex flex-wrap items-center justify-end gap-2 border-t pt-3">
+        {confirmDel ? (
+          <>
+            <span className="text-sm text-red-700">Delete this shipment permanently?</span>
+            <button onClick={() => del.mutate()} disabled={del.isPending} className="rounded-lg bg-red-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-50">{del.isPending ? "Deleting…" : "Yes, delete"}</button>
+            <button onClick={() => setConfirmDel(false)} className="rounded-lg px-3 py-2 text-sm">Cancel</button>
+          </>
+        ) : <button onClick={() => setConfirmDel(true)} className="rounded-lg px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50">Delete shipment</button>}
+      </div>
+      {del.isError && <p role="alert" className="text-sm text-red-600">{del.error?.response?.status === 403 ? "You do not have permission to delete shipments." : "Unable to delete. Please try again."}</p>}
       {saved && <p className="text-sm text-emerald-600">Updated and sent to live viewers.</p>}
       {msg && <p role="alert" className="text-sm text-red-600">{JSON.stringify(msg.status || msg.detail || msg)}</p>}
     </li>
